@@ -1,6 +1,6 @@
 <?php
 
-//[FIX 21.03.2017 2.1]
+// [FIX 21.03.2017 2.1]
 error_reporting (E_ALL ^ E_NOTICE);
 @ini_set ('error_reporting', E_ALL ^ E_NOTICE);
 
@@ -60,7 +60,9 @@ class Sypex_Dumper
         if (get_magic_quotes_gpc()) {
             $_POST = sxd_antimagic($_POST);
         }
-        include("cfg.php");
+				
+				include("cfg.php");
+				
         $this->loadLang($CFG["lang"]);
         if (!ini_get("safe_mode") && function_exists("set_time_limit") && strpos(ini_get("disable_functions"), "set_time_limit") === false)
             @set_time_limit($CFG["time_web"]);
@@ -123,6 +125,10 @@ class Sypex_Dumper
             $sfile = "ses.php";
 						
             if (!empty($_COOKIE["sxd"]) && preg_match("/^[\\da-f]{32}\$/", $_COOKIE["sxd"])) {
+								
+								// [FIX 09.08.2017 2.1]
+								if (!file_exists ($sfile)) file_put_contents ($sfile, '');
+								
                 include($sfile);
                 if (isset($SES[$_COOKIE["sxd"]])) {
                     $auth      = true;
