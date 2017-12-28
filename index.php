@@ -1,8 +1,8 @@
 <?php
 
-//[FIX 21.03.2017 2.1]
-error_reporting (E_ALL ^ E_NOTICE);
-@ini_set ('error_reporting', E_ALL ^ E_NOTICE);
+// [FIX 21.03.2017 2.1]
+error_reporting (E_ALL);
+@ini_set ('error_reporting', E_ALL);
 
 if (!ini_get("zlib.output_compression") && function_exists("ob_gzhandler"))
     ob_start("ob_gzhandler");
@@ -60,7 +60,9 @@ class Sypex_Dumper
         if (get_magic_quotes_gpc()) {
             $_POST = sxd_antimagic($_POST);
         }
-        include("cfg.php");
+				
+				include("cfg.php");
+				
         $this->loadLang($CFG["lang"]);
         if (!ini_get("safe_mode") && function_exists("set_time_limit") && strpos(ini_get("disable_functions"), "set_time_limit") === false)
             @set_time_limit($CFG["time_web"]);
@@ -123,6 +125,10 @@ class Sypex_Dumper
             $sfile = "ses.php";
 						
             if (!empty($_COOKIE["sxd"]) && preg_match("/^[\\da-f]{32}\$/", $_COOKIE["sxd"])) {
+								
+								// [FIX 09.08.2017 2.1]
+								if (!file_exists ($sfile)) file_put_contents ($sfile, '');
+								
                 include($sfile);
                 if (isset($SES[$_COOKIE["sxd"]])) {
                     $auth      = true;
@@ -1421,9 +1427,9 @@ class Sypex_Dumper
     {
         if ($continue) {
             $this->fh_tmp = $this->openFile($this->JOB["file_tmp"], "a");
-            mysqli_select_db($this->res, $this->JOB["db"]);
+            mysqli_select_db($this->res, $this->JOB["db"]) or sxd_my_error($this->res);
         }
-        mysqli_query($this->res, "SET SQL_QUOTE_SHOW_CREATE = 1");
+        mysqli_query($this->res, "SET SQL_QUOTE_SHOW_CREATE = 1") or sxd_my_error($this->res);
         $types  = array(
             "VI" => "View",
             "PR" => "Procedure",
@@ -1457,7 +1463,8 @@ class Sypex_Dumper
                         $from = "";
                         if ($n[0] == "TC" || $this->rtl[7] == 0) {
                             $r = mysqli_query($this->res, "SHOW CREATE TABLE `{$n[1]}`") or sxd_my_error($this->res);
-                            $item = mysqli_fetch_assoc($r);
+                            $item = mysqli_fetch_assoc($r) or sxd_my_error($this->res);
+														
                             $fcache .= "#\tTC`{$n[1]}`{$n[2]}\t;\n{$item['Create Table']}\t;\n";
                             $this->addLog(sprintf($this->LNG["backup_TC"], $n[1]));
                             $this->rtl[7] = 0;
@@ -1519,7 +1526,7 @@ class Sypex_Dumper
                             }
                             $time_old = time();
                             $z        = 0;
-                            $r        = mysqli_unbuffered_query("SELECT {$no_cache}* FROM `{$n[1]}`{$from}");
+                            $r        = mysqli_query($this->res, "SELECT {$no_cache}* FROM `{$n[1]}`{$from}", MYSQLI_USE_RESULT) or sxd_my_error($this->res);
                             while ($row = mysqli_fetch_row($r)) {
                                 if (strlen($fcache) >= 61440) {
                                     $z = 0;
@@ -1548,7 +1555,7 @@ class Sypex_Dumper
                                     if (!isset($row[$k])) {
                                         $row[$k] = "\\N";
                                     } elseif ($notNum[$k]) {
-                                        $row[$k] = "'" . mysqli_real_escape_string($row[$k]) . "'";
+                                        $row[$k] = "'" . mysqli_real_escape_string($this->res, $row[$k]) . "'";
                                     }
                                 }
                                 $fcache .= "(" . implode(",", $row) . "),\n";
@@ -2254,6 +2261,10 @@ function sxd_error_handler($errno, $errmsg, $filename, $linenum, $vars)
 function sxd_esc($str, $quoted = true)
 {
     return $quoted ? "'" . addcslashes($str, "\\\0\n\r\t\\'") . "'" : addcslashes($str, "\\\0\n\r\t\\'");
+}
+function debug($error)
+{
+    trigger_error($error, E_USER_ERROR);
 }
 function sxd_my_error($res)
 {
